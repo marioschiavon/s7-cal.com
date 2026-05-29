@@ -36,7 +36,7 @@ Dokploy
   -> dedicated postgres service/database
 ```
 
-Prefer `dokploy/calcom-fork.external-postgres.compose.yml` for production. It keeps database backups, upgrades and restores independent from app container rebuilds.
+Prefer `docker-compose.dokploy.external-postgres.yml` for production. It keeps database backups, upgrades and restores independent from app container rebuilds and avoids build-context ambiguity in Dokploy.
 
 Use `dokploy/calcom-fork.compose.yml` only if you intentionally want the Postgres container and volume inside the same Compose app.
 
@@ -53,7 +53,7 @@ Both must have HTTPS enabled in Dokploy before testing OAuth callbacks and API c
 
 1. Create a dedicated Postgres database for Cal.com in Dokploy.
 2. Create a new Compose app from this repository.
-3. Use `dokploy/calcom-fork.external-postgres.compose.yml` as the Compose file.
+3. Use `docker-compose.dokploy.external-postgres.yml` as the Compose file.
 4. Add the environment variables from `dokploy/calcom-fork.external-postgres.env.example`.
 5. Replace all placeholder values before first deploy.
 6. Configure the two domains in Dokploy:

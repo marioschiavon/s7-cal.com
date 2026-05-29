@@ -1,0 +1,105 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - calcom_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  calcom:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+        NEXT_PUBLIC_WEBAPP_URL: https://${CALCOM_HOST}
+        NEXT_PUBLIC_API_V2_URL: https://${CALCOM_API_HOST}/api/v2
+        NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+        CALENDSO_ENCRYPTION_KEY: ${CALENDSO_ENCRYPTION_KEY}
+        CALCOM_TELEMETRY_DISABLED: "1"
+        CSP_POLICY: ${CSP_POLICY}
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    expose:
+      - "3000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_DIRECT_URL: ${DATABASE_DIRECT_URL}
+      NEXT_PUBLIC_WEBAPP_URL: https://${CALCOM_HOST}
+      NEXT_PUBLIC_WEBSITE_URL: https://${CALCOM_HOST}
+      NEXT_PUBLIC_EMBED_LIB_URL: https://${CALCOM_HOST}/embed/embed.js
+      NEXT_PUBLIC_API_V2_URL: https://${CALCOM_API_HOST}/api/v2
+      NEXTAUTH_URL: https://${CALCOM_HOST}/api/auth
+      WEB_APP_URL: https://${CALCOM_HOST}
+      ALLOWED_HOSTNAMES: '"${CALCOM_HOST}","${CALCOM_API_HOST}"'
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      CALENDSO_ENCRYPTION_KEY: ${CALENDSO_ENCRYPTION_KEY}
+      CRON_API_KEY: ${CRON_API_KEY}
+      CRON_ENABLE_APP_SYNC: ${CRON_ENABLE_APP_SYNC}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME}
+      EMAIL_SERVER_HOST: ${EMAIL_SERVER_HOST}
+      EMAIL_SERVER_PORT: ${EMAIL_SERVER_PORT}
+      EMAIL_SERVER_USER: ${EMAIL_SERVER_USER}
+      EMAIL_SERVER_PASSWORD: ${EMAIL_SERVER_PASSWORD}
+      GOOGLE_LOGIN_ENABLED: ${GOOGLE_LOGIN_ENABLED}
+      GOOGLE_API_CREDENTIALS: ${GOOGLE_API_CREDENTIALS}
+      GOOGLE_CALENDAR_API_KEY: ${GOOGLE_CALENDAR_API_KEY}
+      GOOGLE_WEBHOOK_TOKEN: ${GOOGLE_WEBHOOK_TOKEN}
+      MICROSOFT_WEBHOOK_TOKEN: ${MICROSOFT_WEBHOOK_TOKEN}
+      MS_GRAPH_CLIENT_ID: ${MS_GRAPH_CLIENT_ID}
+      MS_GRAPH_CLIENT_SECRET: ${MS_GRAPH_CLIENT_SECRET}
+      NEXT_PUBLIC_DISABLE_SIGNUP: ${NEXT_PUBLIC_DISABLE_SIGNUP}
+      CALCOM_TELEMETRY_DISABLED: ${CALCOM_TELEMETRY_DISABLED}
+      REDIS_URL: redis://redis:6379
+      TZ: UTC
+
+  calcom-api:
+    build:
+      context: .
+      dockerfile: apps/api/v2/Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+        DATABASE_DIRECT_URL: ${DATABASE_DIRECT_URL}
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    expose:
+      - "80"
+    environment:
+      NODE_ENV: production
+      API_PORT: 80
+      API_URL: https://${CALCOM_API_HOST}
+      WEB_APP_URL: https://${CALCOM_HOST}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_READ_URL: ${DATABASE_READ_URL}
+      DATABASE_WRITE_URL: ${DATABASE_WRITE_URL}
+      DATABASE_DIRECT_URL: ${DATABASE_DIRECT_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      CALENDSO_ENCRYPTION_KEY: ${CALENDSO_ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_URL: redis://redis:6379
+      API_KEY_PREFIX: ${API_KEY_PREFIX}
+      REWRITE_API_V2_PREFIX: "1"
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOGGER_BRIDGE_LOG_LEVEL: ${LOGGER_BRIDGE_LOG_LEVEL}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME}
+      EMAIL_SERVER_HOST: ${EMAIL_SERVER_HOST}
+      EMAIL_SERVER_PORT: ${EMAIL_SERVER_PORT}
+      EMAIL_SERVER_USER: ${EMAIL_SERVER_USER}
+      EMAIL_SERVER_PASSWORD: ${EMAIL_SERVER_PASSWORD}
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      TZ: UTC
+
+volumes:
+  calcom_redis_data:
