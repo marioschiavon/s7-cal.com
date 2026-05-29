@@ -1,0 +1,13 @@
+{
+  "extends": ["config:recommended"],
+  "docker-compose": {
+    "fileMatch": ["(^|/)dokploy/.*\\.ya?ml$", "(^|/)docker-compose\\.ya?ml$"]
+  },
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "groupName": "docker base images",
+      "automerge": false
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+name: Sync upstream release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional upstream tag to sync, for example v6.2.0"
+        required: false
+  schedule:
+    - cron: "17 8 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch upstream tags
+        run: |
+          git remote add upstream https://github.com/calcom/cal.diy.git
+          git fetch upstream --tags --force
+
+      - name: Resolve target tag
+        id: target
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            tag="${{ github.event.inputs.tag }}"
+          else
+            tag="$(git tag -l 'v*' --sort=-v:refname | head -n 1)"
+          fi
+
+          if [ -z "$tag" ]; then
+            echo "No upstream release tag found"
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "branch=chore/sync-upstream-$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check if tag is already merged
+        id: merged
+        run: |
+          if git merge-base --is-ancestor "${{ steps.target.outputs.tag }}" HEAD; then
+            echo "already_merged=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_merged=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create sync branch
+        if: steps.merged.outputs.already_merged == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "${{ steps.target.outputs.branch }}"
+          git merge --no-edit "${{ steps.target.outputs.tag }}"
+          git push --force-with-lease origin "${{ steps.target.outputs.branch }}"
+
+      - name: Open draft PR
+        if: steps.merged.outputs.already_merged == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh pr view "${{ steps.target.outputs.branch }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "PR already exists for ${{ steps.target.outputs.branch }}"
+          else
+            gh pr create \
+              --repo "${{ github.repository }}" \
+              --base main \
+              --head "${{ steps.target.outputs.branch }}" \
+              --draft \
+              --title "chore: sync upstream ${{ steps.target.outputs.tag }}" \
+              --body "Syncs this fork with calcom/cal.diy tag ${{ steps.target.outputs.tag }}. Deploy staging and run the production smoke test before merging."
+          fi
